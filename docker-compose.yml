@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: enoTik2025@!
+      POSTGRES_DB: myapp
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql 
+
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      DB_USER: postgres
+      DB_PASSWORD: enoTik2025@!
+      DB_NAME: myapp
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_SSLMODE: disable
+    depends_on:
+      postgres:
+        condition: service_healthy 
+    restart: on-failure
+
+volumes:
+  postgres_data:
