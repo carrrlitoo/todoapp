@@ -30,7 +30,7 @@ func main() {
 		fmt.Println("Ошибка при проверке подключения к базе данных:", err)
 		return
 	}
-	fmt.Println("Успешное подключение к базе данных!")
+	fmt.Println("Успешное подключение к базе данных! Successfully connected to the database!")
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
