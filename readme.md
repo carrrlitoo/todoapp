@@ -91,4 +91,5 @@ CREATE TABLE todos (
     completed BOOLEAN DEFAULT false,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
 ```
