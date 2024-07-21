@@ -17,11 +17,31 @@ import (
 
 func GetTodos(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		todos, err := database.GetAllTodos(db)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+		completedParam := r.URL.Query().Get("completed")
+
+		var todos []models.Todo
+		var err error
+
+		if completedParam == "true" {
+			todos, err = database.GetTodosByCompletionStatus(db, true)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		} else if completedParam == "false" {
+			todos, err = database.GetTodosByCompletionStatus(db, false)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		} else {
+			todos, err = database.GetAllTodos(db)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 		}
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(todos)
 	}

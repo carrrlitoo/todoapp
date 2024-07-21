@@ -37,6 +37,26 @@ func GetTodoByID(db *sql.DB, id int) (models.Todo, error) {
 	return t, nil
 }
 
+func GetTodosByCompletionStatus(db *sql.DB, completed bool) ([]models.Todo, error) {
+	var todos []models.Todo
+	rows, err := db.Query("SELECT id, title, description, completed, created_at FROM todos WHERE completed = $1 ORDER BY created_at ASC", completed)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var t models.Todo
+		err := rows.Scan(&t.ID, &t.Title, &t.Description, &t.Completed, &t.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+		todos = append(todos, t)
+	}
+	return todos, nil
+}
+
 func UpdateTodoByID(db *sql.DB, id int, title, description string, completed bool) error {
 	_, err := db.Exec("UPDATE todos SET title = $1, description = $2, completed = $3 WHERE id = $4", title, description, completed, id)
 	return err
