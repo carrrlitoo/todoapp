@@ -3,14 +3,15 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"todoapp/models"
 )
 
-func GetAllTodos(db *sql.DB) ([]models.Todo, error) {
+func GetAllTodos(ctx context.Context, db *sql.DB) ([]models.Todo, error) {
 	var todos []models.Todo
-	rows, err := db.Query("SELECT id, title, description, completed, created_at FROM todos ORDER BY created_at ASC")
+	rows, err := db.QueryContext(ctx, "SELECT id, title, description, completed, created_at FROM todos ORDER BY created_at ASC")
 	if err != nil {
 		return nil, err
 	}
@@ -27,9 +28,9 @@ func GetAllTodos(db *sql.DB) ([]models.Todo, error) {
 	return todos, nil
 }
 
-func GetTodoByID(db *sql.DB, id int) (models.Todo, error) {
+func GetTodoByID(ctx context.Context, db *sql.DB, id int) (models.Todo, error) {
 	var t models.Todo
-	row := db.QueryRow("SELECT id, title, description, completed, created_at FROM todos WHERE id = $1", id)
+	row := db.QueryRowContext(ctx, "SELECT id, title, description, completed, created_at FROM todos WHERE id = $1", id)
 	err := row.Scan(&t.ID, &t.Title, &t.Description, &t.Completed, &t.CreatedAt)
 	if err != nil {
 		return t, err
@@ -37,9 +38,9 @@ func GetTodoByID(db *sql.DB, id int) (models.Todo, error) {
 	return t, nil
 }
 
-func GetTodosByCompletionStatus(db *sql.DB, completed bool) ([]models.Todo, error) {
+func GetTodosByCompletionStatus(ctx context.Context, db *sql.DB, completed bool) ([]models.Todo, error) {
 	var todos []models.Todo
-	rows, err := db.Query("SELECT id, title, description, completed, created_at FROM todos WHERE completed = $1 ORDER BY created_at ASC", completed)
+	rows, err := db.QueryContext(ctx, "SELECT id, title, description, completed, created_at FROM todos WHERE completed = $1 ORDER BY created_at ASC", completed)
 	if err != nil {
 		return nil, err
 	}
@@ -57,19 +58,19 @@ func GetTodosByCompletionStatus(db *sql.DB, completed bool) ([]models.Todo, erro
 	return todos, nil
 }
 
-func UpdateTodoByID(db *sql.DB, id int, title, description string, completed bool) error {
-	_, err := db.Exec("UPDATE todos SET title = $1, description = $2, completed = $3 WHERE id = $4", title, description, completed, id)
+func UpdateTodoByID(ctx context.Context, db *sql.DB, id int, title, description string, completed bool) error {
+	_, err := db.ExecContext(ctx, "UPDATE todos SET title = $1, description = $2, completed = $3 WHERE id = $4", title, description, completed, id)
 	return err
 }
 
-func CreateTodo(db *sql.DB, title, description string) error {
-	_, err := db.Exec("INSERT INTO todos (title, description, completed, created_at) VALUES ($1, $2, $3, NOW())", title, description, false)
+func CreateTodo(ctx context.Context, db *sql.DB, title, description string) error {
+	_, err := db.ExecContext(ctx, "INSERT INTO todos (title, description, completed, created_at) VALUES ($1, $2, $3, NOW())", title, description, false)
 	return err
 }
 
-func DeleteTodoByID(db *sql.DB, id int) error {
+func DeleteTodoByID(ctx context.Context, db *sql.DB, id int) error {
 	var exists bool
-	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM todos WHERE id = $1)", id).Scan(&exists)
+	err := db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM todos WHERE id = $1)", id).Scan(&exists)
 	if err != nil {
 		return err
 	}
@@ -79,6 +80,6 @@ func DeleteTodoByID(db *sql.DB, id int) error {
 
 	}
 
-	_, err = db.Exec("DELETE FROM todos WHERE id = $1", id)
+	_, err = db.ExecContext(ctx, "DELETE FROM todos WHERE id = $1", id)
 	return err
 }

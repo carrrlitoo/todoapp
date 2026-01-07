@@ -3,11 +3,13 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 	"todoapp/database"
 	"todoapp/models"
 	"todoapp/validation"
@@ -17,26 +19,41 @@ import (
 
 func GetTodos(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+
 		completedParam := r.URL.Query().Get("completed")
 
 		var todos []models.Todo
 		var err error
 
 		if completedParam == "true" {
-			todos, err = database.GetTodosByCompletionStatus(db, true)
+			todos, err = database.GetTodosByCompletionStatus(ctx, db, true)
 			if err != nil {
+				if err == context.DeadlineExceeded {
+					http.Error(w, "Request timed out", http.StatusGatewayTimeout)
+					return
+				}
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 		} else if completedParam == "false" {
-			todos, err = database.GetTodosByCompletionStatus(db, false)
+			todos, err = database.GetTodosByCompletionStatus(ctx, db, false)
 			if err != nil {
+				if err == context.DeadlineExceeded {
+					http.Error(w, "Request timed out", http.StatusGatewayTimeout)
+					return
+				}
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 		} else {
-			todos, err = database.GetAllTodos(db)
+			todos, err = database.GetAllTodos(ctx, db)
 			if err != nil {
+				if err == context.DeadlineExceeded {
+					http.Error(w, "Request timed out", http.StatusGatewayTimeout)
+					return
+				}
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -49,6 +66,9 @@ func GetTodos(db *sql.DB) http.HandlerFunc {
 
 func GetTodoByID(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+
 		idStr := chi.URLParam(r, "id")
 		id, err := strconv.Atoi(idStr)
 		if err != nil {
@@ -56,14 +76,18 @@ func GetTodoByID(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		todo, err := database.GetTodoByID(db, id)
+		todo, err := database.GetTodoByID(ctx, db, id)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				http.Error(w, "Todo not found", http.StatusNotFound)
+				return
+			} else if err == context.DeadlineExceeded {
+				http.Error(w, "Request timed out", http.StatusGatewayTimeout)
+				return
 			} else {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
 			}
-			return
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(todo)
@@ -72,6 +96,9 @@ func GetTodoByID(db *sql.DB) http.HandlerFunc {
 
 func CreateTodo(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+
 		var todo models.Todo
 		err := json.NewDecoder(r.Body).Decode(&todo)
 		if err != nil {
@@ -90,8 +117,12 @@ func CreateTodo(db *sql.DB) http.HandlerFunc {
 			}
 		}
 
-		err = database.CreateTodo(db, todo.Title, todo.Description)
+		err = database.CreateTodo(ctx, db, todo.Title, todo.Description)
 		if err != nil {
+			if err == context.DeadlineExceeded {
+				http.Error(w, "Request timed out", http.StatusGatewayTimeout)
+				return
+			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -103,6 +134,9 @@ func CreateTodo(db *sql.DB) http.HandlerFunc {
 
 func UpdateTodoByID(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+
 		idStr := chi.URLParam(r, "id")
 		id, err := strconv.Atoi(idStr)
 		if err != nil {
@@ -123,8 +157,12 @@ func UpdateTodoByID(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		err = database.UpdateTodoByID(db, id, todo.Title, todo.Description, todo.Completed)
+		err = database.UpdateTodoByID(ctx, db, id, todo.Title, todo.Description, todo.Completed)
 		if err != nil {
+			if err == context.DeadlineExceeded {
+				http.Error(w, "Request timed out", http.StatusGatewayTimeout)
+				return
+			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -135,6 +173,9 @@ func UpdateTodoByID(db *sql.DB) http.HandlerFunc {
 
 func DeleteTodoByID(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+
 		idStr := chi.URLParam(r, "id")
 		id, err := strconv.Atoi(idStr)
 		if err != nil {
@@ -142,10 +183,13 @@ func DeleteTodoByID(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		err = database.DeleteTodoByID(db, id)
+		err = database.DeleteTodoByID(ctx, db, id)
 		if err != nil {
 			if err.Error() == fmt.Sprintf("todo c id %d не найден", id) {
 				http.Error(w, err.Error(), http.StatusNotFound)
+				return
+			} else if err == context.DeadlineExceeded {
+				http.Error(w, "Request timed out", http.StatusGatewayTimeout)
 				return
 			} else {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
