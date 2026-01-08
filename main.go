@@ -3,10 +3,15 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 	"todoapp/config"
 	"todoapp/handlers"
 
@@ -33,6 +38,10 @@ func main() {
 	fmt.Println("Успешное подключение к базе данных! Successfully connected to the database!")
 
 	r := chi.NewRouter()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
 	r.Use(middleware.Logger)
 
 	r.Get("/todos", handlers.GetTodos(db))
@@ -42,5 +51,26 @@ func main() {
 	r.Put("/todos/{id}", handlers.UpdateTodoByID(db))
 	r.Delete("/todos/{id}", handlers.DeleteTodoByID(db))
 
-	log.Fatal(http.ListenAndServe(":8080", r))
+	srv := &http.Server{
+		Addr:    ":8080",
+		Handler: r,
+	}
+
+	go func() {
+		fmt.Println("Starting server on :8080")
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("listen: %s\n", err)
+		}
+	}()
+
+	select {
+	case <-quit:
+		fmt.Println("Shutting down server...")
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(ctx); err != nil {
+			log.Fatalf("Server forced to shutdown: %s", err)
+		}
+		fmt.Println("Server shutdown complete.")
+	}
 }
