@@ -10,14 +10,14 @@ import (
 	"net/http"
 	"strconv"
 	"time"
-	"todoapp/database"
 	"todoapp/models"
+	"todoapp/repository"
 	"todoapp/validation"
 
 	"github.com/go-chi/chi/v5"
 )
 
-func GetTodos(db *sql.DB) http.HandlerFunc {
+func GetTodos(todoRepo repository.TodoRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
@@ -28,7 +28,7 @@ func GetTodos(db *sql.DB) http.HandlerFunc {
 		var err error
 
 		if completedParam == "true" {
-			todos, err = database.GetTodosByCompletionStatus(ctx, db, true)
+			todos, err = todoRepo.GetTodosByCompletionStatus(ctx, true)
 			if err != nil {
 				if err == context.DeadlineExceeded {
 					http.Error(w, "Request timed out", http.StatusGatewayTimeout)
@@ -38,7 +38,7 @@ func GetTodos(db *sql.DB) http.HandlerFunc {
 				return
 			}
 		} else if completedParam == "false" {
-			todos, err = database.GetTodosByCompletionStatus(ctx, db, false)
+			todos, err = todoRepo.GetTodosByCompletionStatus(ctx, false)
 			if err != nil {
 				if err == context.DeadlineExceeded {
 					http.Error(w, "Request timed out", http.StatusGatewayTimeout)
@@ -48,7 +48,7 @@ func GetTodos(db *sql.DB) http.HandlerFunc {
 				return
 			}
 		} else {
-			todos, err = database.GetAllTodos(ctx, db)
+			todos, err = todoRepo.GetAllTodos(ctx)
 			if err != nil {
 				if err == context.DeadlineExceeded {
 					http.Error(w, "Request timed out", http.StatusGatewayTimeout)
@@ -64,7 +64,7 @@ func GetTodos(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func GetTodoByID(db *sql.DB) http.HandlerFunc {
+func GetTodoByID(todoRepo repository.TodoRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
@@ -76,7 +76,7 @@ func GetTodoByID(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		todo, err := database.GetTodoByID(ctx, db, id)
+		todo, err := todoRepo.GetTodoByID(ctx, id)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				http.Error(w, "Todo not found", http.StatusNotFound)
@@ -94,7 +94,7 @@ func GetTodoByID(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func CreateTodo(db *sql.DB) http.HandlerFunc {
+func CreateTodo(todoRepo repository.TodoRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
@@ -117,7 +117,7 @@ func CreateTodo(db *sql.DB) http.HandlerFunc {
 			}
 		}
 
-		err = database.CreateTodo(ctx, db, todo.Title, todo.Description)
+		err = todoRepo.CreateTodo(ctx, todo.Title, todo.Description)
 		if err != nil {
 			if err == context.DeadlineExceeded {
 				http.Error(w, "Request timed out", http.StatusGatewayTimeout)
@@ -132,7 +132,7 @@ func CreateTodo(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func UpdateTodoByID(db *sql.DB) http.HandlerFunc {
+func UpdateTodoByID(todoRepo repository.TodoRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
@@ -157,7 +157,7 @@ func UpdateTodoByID(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		err = database.UpdateTodoByID(ctx, db, id, todo.Title, todo.Description, todo.Completed)
+		err = todoRepo.UpdateTodoByID(ctx, id, todo.Title, todo.Description, todo.Completed)
 		if err != nil {
 			if err == context.DeadlineExceeded {
 				http.Error(w, "Request timed out", http.StatusGatewayTimeout)
@@ -171,7 +171,7 @@ func UpdateTodoByID(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func DeleteTodoByID(db *sql.DB) http.HandlerFunc {
+func DeleteTodoByID(todoRepo repository.TodoRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
@@ -183,7 +183,7 @@ func DeleteTodoByID(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		err = database.DeleteTodoByID(ctx, db, id)
+		err = todoRepo.DeleteTodoByID(ctx, id)
 		if err != nil {
 			if err.Error() == fmt.Sprintf("todo c id %d не найден", id) {
 				http.Error(w, err.Error(), http.StatusNotFound)

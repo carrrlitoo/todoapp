@@ -14,6 +14,7 @@ import (
 	"time"
 	"todoapp/config"
 	"todoapp/handlers"
+	"todoapp/repository"
 
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
@@ -44,12 +45,14 @@ func main() {
 
 	r.Use(middleware.Logger)
 
-	r.Get("/todos", handlers.GetTodos(db))
-	r.Post("/todos", handlers.CreateTodo(db))
+	todoRepo := repository.NewPostgresTodoRepository(db)
 
-	r.Get("/todos/{id}", handlers.GetTodoByID(db))
-	r.Put("/todos/{id}", handlers.UpdateTodoByID(db))
-	r.Delete("/todos/{id}", handlers.DeleteTodoByID(db))
+	r.Get("/todos", handlers.GetTodos(todoRepo))
+	r.Post("/todos", handlers.CreateTodo(todoRepo))
+
+	r.Get("/todos/{id}", handlers.GetTodoByID(todoRepo))
+	r.Put("/todos/{id}", handlers.UpdateTodoByID(todoRepo))
+	r.Delete("/todos/{id}", handlers.DeleteTodoByID(todoRepo))
 
 	srv := &http.Server{
 		Addr:    ":8080",

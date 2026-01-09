@@ -77,7 +77,6 @@ func DeleteTodoByID(ctx context.Context, db *sql.DB, id int) error {
 
 	if !exists {
 		return fmt.Errorf("todo c id %d не найден", id)
-
 	}
 
 	_, err = db.ExecContext(ctx, "DELETE FROM todos WHERE id = $1", id)
